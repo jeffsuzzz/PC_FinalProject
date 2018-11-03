@@ -10,10 +10,10 @@ import java.util.Map;
 
 public class FinalProject {
 
-	public static Map<Integer, Double> MinHash = new HashMap<Integer, Double>();
-	public static Map<Integer, Double> Pearson = new HashMap<Integer, Double>();
-	public static Map<Double, List<KV_pairs>> H = new HashMap<Double, List<KV_pairs>>();
-	public static Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
+	public Map<Integer, Double> MinHash = new HashMap<Integer, Double>();
+	public Map<Integer, Double> Pearson = new HashMap<Integer, Double>();
+	public Map<Double, List<KV_pairs>> H = new HashMap<Double, List<KV_pairs>>();
+	public Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
 	static Map<Integer, List<Value>> intra = new HashMap<Integer, List<Value>>();
 	
 	/**
@@ -21,13 +21,14 @@ public class FinalProject {
 	 * @param args   command line argument
 	 */
 	public static void main (String[] args) throws Exception {
-		Partition();
+		FinalProject fp = new FinalProject();
+		fp.Partition();
 	}
 	
 	/**
 	 * Partition phase.
 	 */
-	public static void Partition() {
+	public void Partition() {
 		String csvFile = "ratings_small.csv";
         Map<Integer, List<Value>> map = new HashMap<Integer, List<Value>>();
         
@@ -78,7 +79,7 @@ public class FinalProject {
         }
 	}
 	
-	public static void Shuffle(int key, Value value, Map<Integer,List<Value>> list) {
+	public void Shuffle(int key, Value value, Map<Integer,List<Value>> list) {
 		List<Value> partValue = new ArrayList<Value>();
     	if(list.containsKey(key)) {
     		partValue = list.get(key);
@@ -87,7 +88,7 @@ public class FinalProject {
     	list.put(key, partValue);
 	}
 	
-	public static void Part_reduce(int movieID, List<Value> list) {
+	public void Part_reduce(int movieID, List<Value> list) {
 		double sum = 0;
 		double hMin = Double.MAX_VALUE;
 		int size = list.size();
@@ -117,7 +118,10 @@ public class FinalProject {
     	H.put(hMin, tmp);
 	}
 	
-	public static void Intra_similarity() {
+	/**
+	 * 
+	 */
+	public void Intra_similarity() {
 		Iterator it = H.entrySet().iterator();
         Map.Entry<Double, List<KV_pairs>> entry;
         while (it.hasNext()) {
@@ -126,7 +130,7 @@ public class FinalProject {
         }
 	}
 	
-	public static void Intra_sim_map (List<KV_pairs> L) {
+	public void Intra_sim_map (List<KV_pairs> L) {
 		if (L.size() == 1) {
 			return;
 		}
@@ -169,24 +173,24 @@ public class FinalProject {
 				simKey = new Sim_key(L.get(i).GetMovieID(), L.get(j).GetMovieID());
 				S.put(simKey, sij);
 			}
-			
-			iti = L.get(i).GetListofValues().listIterator();
-			tmpValue1 = iti.next();
-			user1 = tmpValue1.Getuser();
-			rate1 = tmpValue1.GetRating();
-			Value tmp = new Value(0, L.get(i).GetMovieID(), rate1);
-			while (iti.hasNext()) {
-				Shuffle(user1, tmp, intra);
-			}
 		}
 	}
 	
-	public static class CustomComparator implements Comparator<Value> {
+	public class CustomComparator implements Comparator<Value> {
 	    @Override
 	    public int compare(Value v1, Value v2) {
 	    	int user1 = v1.Getuser();
 	    	int user2 = v2.Getuser();
-	    	if()
+	    	int movie1 = v1.GetMovieID();
+	    	int movie2 = v2.GetMovieID();
+	    	if(user1 == 0 && user1 == user2 ) {
+	    		if(movie1 > movie2)
+		    		return 1;
+		    	else if (movie1 < movie2)
+		    		return -1;
+		    	else 
+		    		return 0;
+	    	}
 	    	if(user1 > user2)
 	    		return 1;
 	    	else if (user1 < user2)
@@ -196,7 +200,7 @@ public class FinalProject {
 	    }
 	}
 	
-	public static double hash(double s, int k) {
+	public double hash(double s, int k) {
 		int a, b, p;
 		a = 1; b = 2;
 		p = k+1;
@@ -206,7 +210,7 @@ public class FinalProject {
 		return (a * s + b) % p;
 	}
 	
-	public static class Value{
+	public class Value{
 		int userID;
 		int movieID;
 		double rating;
@@ -238,7 +242,7 @@ public class FinalProject {
 		}
 	}
 	
-	public static class KV_pairs{
+	public class KV_pairs{
 		int movieID;
 		List<Value> user_rateList;
 		public KV_pairs() {}
@@ -266,7 +270,7 @@ public class FinalProject {
 		}
 	}
 	
-	public static class Sim_key{
+	public class Sim_key{
 		int movieID1;
 		int movieID2;
 		
