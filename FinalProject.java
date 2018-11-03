@@ -14,6 +14,7 @@ public class FinalProject {
 	public static Map<Integer, Double> Pearson = new HashMap<Integer, Double>();
 	public static Map<Double, List<KV_pairs>> H = new HashMap<Double, List<KV_pairs>>();
 	public static Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
+	static Map<Integer, List<Value>> intra = new HashMap<Integer, List<Value>>();
 	
 	/**
 	 * Main program.
@@ -33,24 +34,23 @@ public class FinalProject {
         try {
         	BufferedReader br = new BufferedReader(new FileReader(csvFile));
             List<Value> partValue;
-            Value tmp;
+            Value tmp1, tmp2;
             String[] ratings;
-            int movieID;
+            int userID, movieID;
+            double rating;
             String line = br.readLine();
 
             while ((line = br.readLine()) != null) {
                 // use comma as separator
             	ratings = line.split(",");
+            	userID = Integer.parseInt(ratings[0]);
             	movieID = Integer.parseInt(ratings[1]);
-            	tmp = new Value(Integer.parseInt(ratings[0]),
-            			Double.parseDouble(ratings[2]));
-            	
-            	partValue = new ArrayList<Value>();
-            	if(map.containsKey(movieID)) {
-            		partValue = map.get(movieID);
-            	} 
-            	partValue.add(tmp);
-            	map.put(movieID, partValue);
+            	rating = Double.parseDouble(ratings[2]);
+            	tmp1 = new Value(userID, 0, rating);
+            	tmp2 = new Value(0, movieID, rating);
+
+            	Shuffle(movieID, tmp1, map);
+            	Shuffle(userID, tmp2, intra);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -76,6 +76,15 @@ public class FinalProject {
         while (its.hasNext()) {
         	its.next().Print();
         }
+	}
+	
+	public static void Shuffle(int key, Value value, Map<Integer,List<Value>> list) {
+		List<Value> partValue = new ArrayList<Value>();
+    	if(list.containsKey(key)) {
+    		partValue = list.get(key);
+    	}
+    	partValue.add(value);
+    	list.put(key, partValue);
 	}
 	
 	public static void Part_reduce(int movieID, List<Value> list) {
@@ -162,8 +171,12 @@ public class FinalProject {
 			}
 			
 			iti = L.get(i).GetListofValues().listIterator();
+			tmpValue1 = iti.next();
+			user1 = tmpValue1.Getuser();
+			rate1 = tmpValue1.GetRating();
+			Value tmp = new Value(0, L.get(i).GetMovieID(), rate1);
 			while (iti.hasNext()) {
-				
+				Shuffle(user1, tmp, intra);
 			}
 		}
 	}
@@ -173,6 +186,7 @@ public class FinalProject {
 	    public int compare(Value v1, Value v2) {
 	    	int user1 = v1.Getuser();
 	    	int user2 = v2.Getuser();
+	    	if()
 	    	if(user1 > user2)
 	    		return 1;
 	    	else if (user1 < user2)
@@ -194,11 +208,13 @@ public class FinalProject {
 	
 	public static class Value{
 		int userID;
+		int movieID;
 		double rating;
 		public Value() {}
 		
-		public Value(int userID, double rating) {
+		public Value(int userID, int movieID, double rating) {
 			this.userID = userID;
+			this.movieID = movieID;
 			this.rating = rating;
 		}
 		
@@ -206,12 +222,19 @@ public class FinalProject {
 			return this.userID;
 		}
 		
+		public int GetMovieID() {
+			return this.movieID;
+		}
+		
 		public double GetRating() {
 			return this.rating;
 		}
 		
 		public void Print() {
-			System.out.print("("+userID+","+rating+") ");
+			if(this.movieID == 0)
+				System.out.print("("+userID+","+rating+") ");
+			else if(this.userID == 0)
+				System.out.print("("+movieID+","+rating+") ");
 		}
 	}
 	
