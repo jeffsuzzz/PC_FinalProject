@@ -298,6 +298,10 @@ public class LSH {
     }
 
 
+    public Map<Integer, ArrayList<Integer>> getBuckets() {
+
+        return buckets;
+    }
 
 
 }
