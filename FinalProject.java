@@ -71,17 +71,23 @@ public class FinalProject {
 	
 	public void storeRating(String stringRating) {
         String[] ratings = stringRating.split(",");
-        int movieID = Integer.parseInt(ratings[1]);
+        int movieId = Integer.parseInt(ratings[1]);
         int userId = Integer.parseInt(ratings[0]);
-        Rating rating = new Rating(movieID, userId,
+        Rating rating = new Rating(movieId, userId,
                 Double.parseDouble(ratings[2]));
 
-        if(userId < 300) {
-        	Shuffle(movieID, rating, itemToUserMap);
+        if(userId < 300 && movieId < 300) {
+        	Shuffle(movieId, rating, itemToUserMap);
             Shuffle(userId,rating, userToItemMap);
         }
     }
 	
+	/**
+	 * Add the key-value into the target map.
+	 * @param key
+	 * @param value
+	 * @param list
+	 */
 	public void Shuffle(int key, Rating value, Map<Integer,List<Rating>> list) {
         List<Rating> ratingList;
         if(!list.containsKey(key)) {
@@ -137,7 +143,7 @@ public class FinalProject {
         }
         //H = new HashMap<Double, List<KV_pairs>>();
         //itemToUserMap = new HashMap<Integer, List<Rating>>();
-        System.out.println(S.size());
+        System.out.println("Size of S: " + S.size());
         /*it = S.entrySet().iterator();
         Map.Entry<Sim_key, Double> entry2;
         System.out.println("Key     sij");
@@ -186,12 +192,16 @@ public class FinalProject {
 						}
 					}
 				}
+				//if(sum!=0 || pi!=0 || pj!=0) {
+					//System.out.println(sum+" "+pi+" "+pj);
+				//}
 				
 				sij = sum / Math.sqrt(pi * pj);
-				if(!Double.isNaN(sij)) {
-					simKey = new Sim_key(L.get(i).GetMovieID(), L.get(j).GetMovieID());
-					S.put(simKey, sij);
+				if(Double.isNaN(sij)) {
+					sij = 0;
 				}
+				simKey = new Sim_key(L.get(i).GetMovieID(), L.get(j).GetMovieID());
+				S.put(simKey, sij);
 			}
 		}
 	}
@@ -210,7 +220,7 @@ public class FinalProject {
         	entry2 = (Map.Entry)it2.next();
         	Inter_sim_reduce(entry2.getKey(), entry2.getValue());
         }
-        System.out.println(S.size());
+        System.out.println("Size of S: " + S.size());
 	}
 	
 	public void Inter_sim_map(int userId, List<Rating> list) {
