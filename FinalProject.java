@@ -32,22 +32,13 @@ public class FinalProject {
 	/**
 	 * Partition phase.
 	 */
-	public void Partition() {
-		String csvFile = "ratings_small.csv";
-        
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(csvFile));
+	public void Partition() throws IOException  {
+		String csvFile = "ratings_small2.csv";
+        BufferedReader br = new BufferedReader(new FileReader(csvFile));
+        String line = br.readLine();
 
-            String line = br.readLine();
-
-            while ((line = br.readLine()) != null) {
-                // use comma as separator
-                storeRating(line);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        while ((line = br.readLine()) != null) {
+            storeRating(line);
         }
         
         Iterator it = itemToUserMap.entrySet().iterator();
@@ -75,11 +66,9 @@ public class FinalProject {
         int userId = Integer.parseInt(ratings[0]);
         Rating rating = new Rating(movieId, userId,
                 Double.parseDouble(ratings[2]));
-
-        if(userId < 300 && movieId < 300) {
-        	Shuffle(movieId, rating, itemToUserMap);
-            Shuffle(userId,rating, userToItemMap);
-        }
+        
+        Shuffle(movieId, rating, itemToUserMap);
+        Shuffle(userId,rating, userToItemMap);
     }
 	
 	/**
@@ -143,8 +132,8 @@ public class FinalProject {
         }
         //H = new HashMap<Double, List<KV_pairs>>();
         //itemToUserMap = new HashMap<Integer, List<Rating>>();
-        System.out.println("Size of S: " + S.size());
-        /*it = S.entrySet().iterator();
+        /*System.out.println("Size of S: " + S.size());
+        it = S.entrySet().iterator();
         Map.Entry<Sim_key, Double> entry2;
         System.out.println("Key     sij");
         while (it.hasNext()) {
@@ -220,7 +209,7 @@ public class FinalProject {
         	entry2 = (Map.Entry)it2.next();
         	Inter_sim_reduce(entry2.getKey(), entry2.getValue());
         }
-        System.out.println("Size of S: " + S.size());
+        //System.out.println("Size of S: " + S.size());
 	}
 	
 	public void Inter_sim_map(int userId, List<Rating> list) {
@@ -246,8 +235,7 @@ public class FinalProject {
 					Shuffle(simKey, itemSim, itemSimMap);
 				}
 			}
-		}
-		
+		}	
 	}
 	
 	public void Inter_sim_reduce(Sim_key simKey, List<Double[]> L) {
@@ -275,63 +263,4 @@ public class FinalProject {
 		return (a * s + b) % p;
 	}
 	
-	public  class KV_pairs{
-        int movieID;
-        List<Rating> user_rateList;
-        public KV_pairs() {}
-
-        public KV_pairs(int movieID, List<Rating> user_rateList) {
-            this.movieID = movieID;
-            this.user_rateList = user_rateList;
-        }
-
-        public int GetMovieID() {
-            return this.movieID;
-        }
-
-        public List<Rating> GetListofValues() {
-            return this.user_rateList;
-        }
-
-        public void Print() {
-            System.out.print(movieID+", (");
-            ListIterator<Rating> it = user_rateList.listIterator();
-            while (it.hasNext()) {
-                it.next().Print();
-            }
-            System.out.println(")");
-        }
-    }
-	
-	public class Sim_key{
-		int movieID1;
-		int movieID2;
-		
-		public Sim_key(int k1, int k2) {
-			this.movieID1 = k1;
-			this.movieID2 = k2;
-		}
-		
-		@Override
-		public int hashCode() {
-			return movieID1 + movieID2;
-		}
-		
-		@Override
-		public boolean equals(Object obj) {
-			if(obj instanceof Sim_key && ( 
-					(((Sim_key) obj).movieID1 == this.movieID1 &&
-					((Sim_key) obj).movieID2 == this.movieID2) || 
-					(((Sim_key) obj).movieID1 == this.movieID2 &&
-					((Sim_key) obj).movieID2 == this.movieID1)
-			)) {
-				return true;
-			} 
-			return false;
-		}
-		
-		public void Print() {
-			System.out.print(movieID1 + "," + movieID2);
-		}
-	}
 }
