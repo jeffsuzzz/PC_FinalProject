@@ -24,6 +24,18 @@ public class Sim_key {
 		return this.movieId2;
 	}
 	
+	public boolean hasKey(int movieId) {
+		return (this.movieId1 == movieId) || (this.movieId2 == movieId);
+	}
+	
+	public int getOtherKey(int movieId) {
+		if (this.movieId1 == movieId)
+			return this.movieId2;
+		else if(this.movieId2 == movieId)
+			return this.movieId2;
+		return -1;
+	}
+	
 	@Override
 	public int hashCode() {
 		return Integer.hashCode(movieId1) + Integer.hashCode(movieId2);
