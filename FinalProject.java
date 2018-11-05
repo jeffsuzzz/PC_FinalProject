@@ -1,6 +1,5 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -9,10 +8,10 @@ import java.util.Map;
 
 public class FinalProject {
 
-	public Map<Integer, Double> MinHash = new HashMap<Integer, Double>();
 	public Map<Integer, Double> averageItemRating = new HashMap<Integer, Double>();
-	public Map<Double, List<KV_pairs>> H = new HashMap<Double, List<KV_pairs>>();
 	public Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
+	public Integer[] Sindex;
+	public double[][] S2;
 	public Map<Integer, List<Rating>> itemToUserMap = new HashMap<Integer, List<Rating>>();
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
 	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
@@ -41,6 +40,9 @@ public class FinalProject {
             storeRating(line);
         }
 
+        computeAverage();
+        buildSimilarityArray(300);
+        
 		LSH lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
 		bucketMap = lsh.getBuckets();
@@ -58,8 +60,6 @@ public class FinalProject {
         }*/
 	}
 
-
-	
 	public void storeRating(String stringRating) {
         String[] ratings = stringRating.split(",");
         int movieId = Integer.parseInt(ratings[1]);
@@ -76,9 +76,26 @@ public class FinalProject {
         Shuffle(userId,rating, userToItemMap);
     }
 
-
-    public void computeAverageRating() {
-
+	public void computeAverage() {
+		Iterator it = itemToUserMap.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Integer, List<Rating>> pair = (Map.Entry)it.next();
+            double sum = averageItemRating.get(pair.getKey());
+            double avg = sum / pair.getValue().size();
+            averageItemRating.put(pair.getKey(), avg);
+        }
+	}
+	
+	public void buildSimilarityArray(int maxValue) {
+		int N = itemToUserMap.size();
+		final Integer[] keyArray = new Integer[N];
+        Sindex = new Integer[maxValue];	// Max value of itemId + 1.
+        itemToUserMap.keySet().toArray(keyArray);
+        
+        for (int i = 0; i < N; i++) {
+        	Sindex[keyArray[i]] = i;
+        }
+        S2 = new double[N][N];
 	}
 	
 	/**
@@ -104,16 +121,11 @@ public class FinalProject {
         }
         list.get(key).add(sim);
 	}
-	
-
-	
 
 	public void runIntraSimilarity() {
-
 		for(int bucketId: bucketMap.keySet()) {
 			intra_sim_map(bucketMap.get(bucketId));
 		}
-
 	}
 
 	public void intra_sim_map(ArrayList<Integer> items) {
@@ -156,9 +168,6 @@ public class FinalProject {
 						}
 					}
 				}
-				//if(sum!=0 || pi!=0 || pj!=0) {
-				//System.out.println(sum+" "+pi+" "+pj);
-				//}
 
 				similarity = sum / Math.sqrt(pi * pj);
 				if(Double.isNaN(similarity)) {
@@ -166,6 +175,7 @@ public class FinalProject {
 				}
 				simKey = new Sim_key(items.get(item1Index), items.get(item2Index));
 				S.put(simKey, similarity);
+				S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = similarity;
 			}
 		}
 	}
@@ -227,16 +237,7 @@ public class FinalProject {
 		}
 		sij = sum / Math.sqrt(pi * pj);
 		S.put(simKey, sij);
-	}
-	
-	public double hash(double s, int k) {
-		int a, b, p;
-		a = 1; b = 2;
-		p = k+1;
-		while(!Prime.isPrime(p)) {
-			p++;
-		}
-		return (a * s + b) % p;
+		S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
 	}
 	
 }
