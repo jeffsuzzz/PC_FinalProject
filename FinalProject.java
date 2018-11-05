@@ -1,7 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -11,12 +10,13 @@ import java.util.Map;
 public class FinalProject {
 
 	public Map<Integer, Double> MinHash = new HashMap<Integer, Double>();
-	public Map<Integer, Double> Pearson = new HashMap<Integer, Double>();
+	public Map<Integer, Double> averageItemRating = new HashMap<Integer, Double>();
 	public Map<Double, List<KV_pairs>> H = new HashMap<Double, List<KV_pairs>>();
 	public Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
 	public Map<Integer, List<Rating>> itemToUserMap = new HashMap<Integer, List<Rating>>();
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
 	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
+	public Map<Integer, ArrayList<Integer> > bucketMap ;
 	
 	/**
 	 * Main program.
@@ -25,7 +25,7 @@ public class FinalProject {
 	public static void main (String[] args) throws Exception {
 		FinalProject fp = new FinalProject();
 		fp.Partition();
-		fp.Intra_similarity();
+		fp.runIntraSimilarity();
 		fp.Inter_similarity();
 	}
 	
@@ -40,15 +40,13 @@ public class FinalProject {
         while ((line = br.readLine()) != null) {
             storeRating(line);
         }
-        
-        Iterator it = itemToUserMap.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, List<Rating>> pair = (Map.Entry)it.next();
-            Part_reduce(pair.getKey(), pair.getValue());
-        }
+
+		LSH lsh = new LSH(itemToUserMap, userToItemMap);
+        lsh.createGroups();
+		bucketMap = lsh.getBuckets();
         /*
         System.out.println(MinHash.size());
-        System.out.println(Pearson.size());
+        System.out.println(averageItemRating.size());
         System.out.println(H.size());
         it = H.entrySet().iterator();
         it.next();
@@ -59,6 +57,8 @@ public class FinalProject {
         	its.next().Print();
         }*/
 	}
+
+
 	
 	public void storeRating(String stringRating) {
         String[] ratings = stringRating.split(",");
@@ -66,10 +66,20 @@ public class FinalProject {
         int userId = Integer.parseInt(ratings[0]);
         Rating rating = new Rating(movieId, userId,
                 Double.parseDouble(ratings[2]));
-        
+		if(!averageItemRating.containsKey(movieId)) {
+			averageItemRating.put(movieId,rating.rating);
+		}
+		else {
+			averageItemRating.put(movieId, averageItemRating.get(movieId) + rating.movieId );
+		}
         Shuffle(movieId, rating, itemToUserMap);
         Shuffle(userId,rating, userToItemMap);
     }
+
+
+    public void computeAverageRating() {
+
+	}
 	
 	/**
 	 * Add the key-value into the target map.
@@ -95,105 +105,71 @@ public class FinalProject {
         list.get(key).add(sim);
 	}
 	
-	public void Part_reduce(int movieID, List<Rating> list) {
-        double sum = 0;
-        double hMin = Double.MAX_VALUE;
-        int size = list.size();
 
-        ListIterator<Rating> it = list.listIterator();
-        while (it.hasNext()) {
-            Rating tmp = it.next();
-            sum += tmp.rating;
-            if(hash(tmp.rating, size) < hMin)
-                hMin = hash(tmp.rating, size);
-        }
-
-        double rAvg = sum / size;
-        Pearson.put(movieID, rAvg);
-        MinHash.put(movieID, hMin);
-
-        Collections.sort(list, new RatingComparator());
-        List<KV_pairs> tmp = new ArrayList<KV_pairs>();
-        if(H.containsKey(hMin)) {
-            tmp = H.get(hMin);
-        }
-        KV_pairs now = new KV_pairs(movieID, list);
-        tmp.add(now);
-        H.put(hMin, tmp);
-    }
 	
-	
-	public void Intra_similarity() {
-		Iterator it = H.entrySet().iterator();
-        Map.Entry<Double, List<KV_pairs>> entry;
-        while (it.hasNext()) {
-        	entry = (Map.Entry)it.next();
-        	Intra_sim_map (entry.getValue());
-        }
-        //H = new HashMap<Double, List<KV_pairs>>();
-        //itemToUserMap = new HashMap<Integer, List<Rating>>();
-        /*System.out.println("Size of S: " + S.size());
-        it = S.entrySet().iterator();
-        Map.Entry<Sim_key, Double> entry2;
-        System.out.println("Key     sij");
-        while (it.hasNext()) {
-        	entry2 = (Map.Entry)it.next();
-        	entry2.getKey().Print();
-        	System.out.println(" " + entry2.getValue());
-        }*/
+
+	public void runIntraSimilarity() {
+
+		for(int bucketId: bucketMap.keySet()) {
+			intra_sim_map(bucketMap.get(bucketId));
+		}
+
 	}
-	
-	public void Intra_sim_map (List<KV_pairs> L) {
-		if (L.size() == 1) {
+
+	public void intra_sim_map(ArrayList<Integer> items) {
+		if (items.size() == 1) {
 			return;
 		}
-		
-		double sij, sum, pi, pj, riBar, rjBar;
-		ListIterator<Rating> iti, itj;
+
+		double similarity, sum, pi, pj, averageItem1Rating, averageItem2Rating;
+		ListIterator<Rating> ratingIterator1, ratingIterator2;
 		Rating tmpValue1, tmpValue2;
 		int user1, user2;
 		double rate1, rate2;
 		Sim_key simKey;
 		// For every pair in L, compute similarity.
-		for (int i = 0; i < L.size() - 1; i++) {
-			riBar = Pearson.get(L.get(i).GetMovieID());
-			for (int j = i + 1; j < L.size(); j++) {
+		for (int item1Index = 0; item1Index < items.size() - 1; item1Index++) {
+
+			averageItem1Rating = averageItemRating.get(items.get(item1Index));
+			for (int item2Index = item1Index + 1; item2Index < items.size(); item2Index++) {
+
 				sum = 0; pi = 0; pj = 0;
-				rjBar = Pearson.get(L.get(j).GetMovieID());
+				averageItem2Rating = averageItemRating.get(items.get(item2Index));
 				// Can it be improved using its sorted nature?
-				iti = L.get(i).GetListofValues().listIterator();
-				while (iti.hasNext()) {
-					tmpValue1 = iti.next();
+				ratingIterator1 = itemToUserMap.get(items.get(item1Index)).listIterator();
+				while (ratingIterator1.hasNext()) {
+					tmpValue1 = ratingIterator1.next();
 					user1 = tmpValue1.getUser();
 					rate1 = tmpValue1.getRating();
-					
-					itj = L.get(j).GetListofValues().listIterator();
-					while (itj.hasNext()) {
-						tmpValue2 = itj.next();
+
+					ratingIterator2 = itemToUserMap.get(items.get(item2Index)).listIterator();
+					while (ratingIterator2.hasNext()) {
+						tmpValue2 = ratingIterator2.next();
 						user2 = tmpValue2.getUser();
 						rate2 = tmpValue2.getRating();
-						
+
 						// If the same user.
 						if (user1 == user2) {
-							sum += (rate1 - riBar) * (rate2 - rjBar);
-							pi += (rate1 - riBar) * (rate1 - riBar);
-							pj += (rate2 - rjBar) * (rate2 - rjBar);
+							sum += (rate1 - averageItem1Rating) * (rate2 - averageItem2Rating);
+							pi += (rate1 - averageItem1Rating) * (rate1 - averageItem1Rating);
+							pj += (rate2 - averageItem2Rating) * (rate2 - averageItem2Rating);
 						}
 					}
 				}
 				//if(sum!=0 || pi!=0 || pj!=0) {
-					//System.out.println(sum+" "+pi+" "+pj);
+				//System.out.println(sum+" "+pi+" "+pj);
 				//}
-				
-				sij = sum / Math.sqrt(pi * pj);
-				if(Double.isNaN(sij)) {
-					sij = 0;
+
+				similarity = sum / Math.sqrt(pi * pj);
+				if(Double.isNaN(similarity)) {
+					similarity = 0;
 				}
-				simKey = new Sim_key(L.get(i).GetMovieID(), L.get(j).GetMovieID());
-				S.put(simKey, sij);
+				simKey = new Sim_key(items.get(item1Index), items.get(item2Index));
+				S.put(simKey, similarity);
 			}
 		}
 	}
+
 	
 	public void Inter_similarity() {
 		Iterator it = userToItemMap.entrySet().iterator();
@@ -227,8 +203,8 @@ public class FinalProject {
 			
 				if(!MinHash.get(rate1.getMovieId()).equals(
 						MinHash.get(rate2.getMovieId()))) {
-					riBar = Pearson.get(rate1.getMovieId());
-					rjBar = Pearson.get(rate2.getMovieId());
+					riBar = averageItemRating.get(rate1.getMovieId());
+					rjBar = averageItemRating.get(rate2.getMovieId());
 					itemSim[0] = rate1.getRating() - riBar;
 					itemSim[1] = rate2.getRating() - rjBar;
 					simKey = new Sim_key(rate1.getMovieId(), rate2.getMovieId());
