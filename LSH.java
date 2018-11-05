@@ -28,6 +28,7 @@ public class LSH {
     Map<Integer, ArrayList<Integer>> buckets;
 
     Map<Integer, ArrayList<Integer>> bandHashMap;
+
     public static final long LARGE_PRIME =  433494437;
 
     public static final int NUMBER_OF_BUCKETS = 12;
@@ -40,7 +41,7 @@ public class LSH {
 
     int a = 98143; //(a*x + b ) *p
     int b = 99989;
-    int p;
+
 
 
 
@@ -308,7 +309,17 @@ public class LSH {
            if(!buckets.containsKey(bucketNumber)) {
                buckets.put(bucketNumber, new ArrayList<Integer>());
            }
+
            int itemID = matrixColIndexToItem.get(itemIndex);
+
+           if(!itemToBucket.containsKey(itemID)) {
+
+               itemToBucket.put(itemID, bucketId);
+           }
+           else {
+
+               itemToBucket.put(itemID, bucketId);
+           }
            buckets.get(bucketNumber).add(itemID);
 
         }
@@ -383,5 +394,9 @@ public class LSH {
 
 
 
+    public int getItemBucket(int itemId) {
+
+        return itemToBucket.get(itemId);
+    }
 
 }
