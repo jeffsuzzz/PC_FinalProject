@@ -16,6 +16,7 @@ public class FinalProject {
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
 	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
 	public Map<Integer, ArrayList<Integer> > bucketMap ;
+	LSH lsh;
 	
 	/**
 	 * Main program.
@@ -43,9 +44,10 @@ public class FinalProject {
         computeAverage();
         buildSimilarityArray(300);
         
-		LSH lsh = new LSH(itemToUserMap, userToItemMap);
+		lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
 		bucketMap = lsh.getBuckets();
+		
         /*
         System.out.println(MinHash.size());
         System.out.println(averageItemRating.size());
@@ -126,6 +128,7 @@ public class FinalProject {
 		for(int bucketId: bucketMap.keySet()) {
 			intra_sim_map(bucketMap.get(bucketId));
 		}
+		System.out.println("Size of S: " + S.size());
 	}
 
 	public void intra_sim_map(ArrayList<Integer> items) {
@@ -179,7 +182,7 @@ public class FinalProject {
 			}
 		}
 	}
-
+	
 	
 	public void Inter_similarity() {
 		Iterator it = userToItemMap.entrySet().iterator();
@@ -189,13 +192,14 @@ public class FinalProject {
         	Inter_sim_map (entry.getKey(), entry.getValue());
         }
         
+        
         Iterator it2 = itemSimMap.entrySet().iterator();
         Map.Entry<Sim_key, List<Double[]>> entry2;
         while (it2.hasNext()) {
         	entry2 = (Map.Entry)it2.next();
         	Inter_sim_reduce(entry2.getKey(), entry2.getValue());
         }
-        //System.out.println("Size of S: " + S.size());
+        System.out.println("Size of S: " + S.size());
 	}
 	
 	public void Inter_sim_map(int userId, List<Rating> list) {
@@ -210,9 +214,9 @@ public class FinalProject {
 			rate1 = list.get(i);
 			for (int j = i + 1; j < list.size(); j++) {
 				rate2 = list.get(j);
-			
-				if(!MinHash.get(rate1.getMovieId()).equals(
-						MinHash.get(rate2.getMovieId()))) {
+				
+				if(lsh.getItemBucket(rate1.getMovieId()) !=
+						lsh.getItemBucket(rate2.getMovieId())) {
 					riBar = averageItemRating.get(rate1.getMovieId());
 					rjBar = averageItemRating.get(rate2.getMovieId());
 					itemSim[0] = rate1.getRating() - riBar;
