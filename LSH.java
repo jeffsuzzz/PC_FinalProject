@@ -23,13 +23,25 @@ public class LSH {
 
     Map<Integer, Integer> itemToBucket;
 
+    Map<Integer, Integer> itemToAccum;
+
     Map<Integer, ArrayList<Integer>> buckets;
+
+    Map<Integer, ArrayList<Integer>> bandHashMap;
+    public static final long LARGE_PRIME =  433494437;
+
+    public static final int NUMBER_OF_BUCKETS = 12;
 
     public static final int NUMBER_OF_PERMUTATIONS = 100;
 
     public static final int BAND_SIZE = 4;
 
     int bucketId;
+
+    int a = 98143; //(a*x + b ) *p
+    int b = 99989;
+    int p;
+
 
 
     LSH(Map<Integer, List<Rating>> itemToUserMap, Map<Integer, List<Rating>> userToItemMap) {
@@ -43,7 +55,9 @@ public class LSH {
         matrixColIndexToItem  = new HashMap<Integer, Integer>() ;
         userToMatrixRowlIndex = new HashMap<Integer, Integer>() ;
         matrixRowIndexToUser  = new HashMap<Integer, Integer>() ;
+        bandHashMap = new HashMap<Integer, ArrayList<Integer> >() ;
 
+        itemToAccum = new HashMap<Integer, Integer>() ;
         initUserAndItemMaps();
         itemToBucket = new HashMap<>();
         bucketId = 1;
@@ -79,6 +93,7 @@ public class LSH {
         buildSignatureMatrix();
         System.out.println("Build Signature Finished");
         createBucket();
+        allocateBucket();
         System.out.println("Create Bucket Finished");
 
     }
@@ -133,19 +148,20 @@ public class LSH {
             for(BitSet bitSet : shingleMatrix ) {
                 if(bitSet.get(index)) {
                     addStatus = true;
-                    signature.add(row);
+                    signature.add( (row ));
                     break;
                 }
                 row++;
             }
             if(!addStatus) {
-                signature.add(row);
+                signature.add((row ));
             }
 
         }
         signatureMatrix.add(signature);
 
     }
+
 
 
     public void createBucket() {
@@ -155,7 +171,7 @@ public class LSH {
         for (int bandIndex = 0; bandIndex < end; bandIndex++) {
 
 
-            computeBandSimilarity(bandIndex);
+            computeBandWiseHash(bandIndex);
 
 
         }
@@ -238,6 +254,69 @@ public class LSH {
 
 
 
+    public void computeBandForHash(int itemIndex , int bandIndex) {
+
+        int startIndex = bandIndex * BAND_SIZE;
+        int endIndex = startIndex + BAND_SIZE;
+        int acc = 0;
+        while(startIndex < endIndex && startIndex < signatureMatrix.size()) {
+            acc += signatureMatrix.get(startIndex).get(itemIndex);
+            startIndex++;
+        }
+        int hash = ((a * acc) + b) % Integer.MAX_VALUE;
+        if(hash < 0) {
+            System.out.println("negative hash");
+        }
+        if(!bandHashMap.containsKey(bandIndex)) {
+            bandHashMap.put(bandIndex, new ArrayList<Integer>());
+        }
+        bandHashMap.get(bandIndex).add(hash);
+    }
+
+
+
+
+    public void computeBandWiseHash(int bandIndex) {
+
+        int noOfItems = itemToMatrixColIndex.size();
+        for(int itemIndex = 0; itemIndex < noOfItems ; itemIndex++ ) {
+
+            computeBandForHash(itemIndex, bandIndex);
+
+        }
+
+    }
+
+
+    public void allocateBucket() {
+
+        int noOfItems = itemToMatrixColIndex.size();
+
+        int noOfBands = bandHashMap.size();
+        for(int itemIndex = 0; itemIndex < noOfItems ; itemIndex++ ) {
+
+            int acc = 0;
+           for(int bandID: bandHashMap.keySet()) {
+               if(bandHashMap.get(bandID).get(itemIndex) < 0) {
+                   System.out.println("Negative value");
+               }
+               acc = (int) (((long)acc + (long) bandHashMap.get(bandID).get(itemIndex))% Integer.MAX_VALUE);
+           }
+
+           int bucketNumber = acc % NUMBER_OF_BUCKETS;
+
+           if(!buckets.containsKey(bucketNumber)) {
+               buckets.put(bucketNumber, new ArrayList<Integer>());
+           }
+           int itemID = matrixColIndexToItem.get(itemIndex);
+           buckets.get(bucketNumber).add(itemID);
+
+        }
+
+    }
+
+
+
     public void computeBandSimilarity(int bandIndex) {
 
         int noOfItems = itemToMatrixColIndex.size();
@@ -297,11 +376,12 @@ public class LSH {
         System.out.println("number of buckets" + bucketCount);
     }
 
-
     public Map<Integer, ArrayList<Integer>> getBuckets() {
 
         return buckets;
     }
+
+
 
 
 }
