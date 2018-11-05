@@ -80,23 +80,15 @@ public class LSH {
             matrixColIndexToItem.put(itemIndex,itemID);
             itemIndex++;
         }
-
-
-
     }
 
 
     public void createGroups() {
         buildShingleMatrix();
-        System.out.println("Build Shingle Finished");
         initShingleMatrix();
-        System.out.println("Init Shingle Finished");
         buildSignatureMatrix();
-        System.out.println("Build Signature Finished");
         createBucket();
         allocateBucket();
-        System.out.println("Create Bucket Finished");
-
     }
     public void buildShingleMatrix() {
 
@@ -133,7 +125,6 @@ public class LSH {
         for( int index = 0; index < NUMBER_OF_PERMUTATIONS; index++) {
             Collections.shuffle(shingleMatrix);
             populateNextSignature();
-
         }
     }
 
@@ -314,11 +305,11 @@ public class LSH {
 
            if(!itemToBucket.containsKey(itemID)) {
 
-               itemToBucket.put(itemID, bucketId);
+               itemToBucket.put(itemID, bucketNumber);
            }
            else {
 
-               itemToBucket.put(itemID, bucketId);
+               itemToBucket.put(itemID, bucketNumber);
            }
            buckets.get(bucketNumber).add(itemID);
 
@@ -385,17 +376,16 @@ public class LSH {
             bucketCount++;
         }
         System.out.println("number of buckets" + bucketCount);
+        for( int item: itemToBucket.keySet()) {
+            System.out.println(" item:" + item + ",Bucket " + itemToBucket.get(item));
+        }
     }
 
     public Map<Integer, ArrayList<Integer>> getBuckets() {
-
         return buckets;
     }
 
-
-
     public int getItemBucket(int itemId) {
-
         return itemToBucket.get(itemId);
     }
 
