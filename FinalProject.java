@@ -5,45 +5,46 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import edu.rit.pj2.Task;
 
-public class FinalProject {
+public class FinalProject extends Task {
 
 	public Map<Integer, Double> averageItemRating = new HashMap<Integer, Double>();
-	public Map<Sim_key, Double> similarityMap = new HashMap<Sim_key, Double>();
 	public Integer[] Sindex;
 	public double[][] similarityArray;
 	public Map<Integer, List<Rating>> itemToUserMap = new HashMap<Integer, List<Rating>>();
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
-	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
-	public Map<Integer, ArrayList<Integer> > bucketMap ;
+    public Map<Integer, ArrayList<Integer> > bucketMap ;
 	public Integer[] keyArray;
 	LSH lsh;
 	int maxItemId;
+	int rating = 0;
 	
 	/**
 	 * Main program.
 	 * @param args   command line argument
 	 */
-	public static void main (String[] args) throws Exception {
-		FinalProject fp = new FinalProject();
-		fp.Partition();
-		fp.runIntraSimilarity();
-		fp.Inter_similarity();
-		fp.findRecommendationForUser(2);
+	public void main (String[] args) throws Exception {
+		Partition();
+		runIntraSimilarity();
+		Inter_similarity();
+		findRecommendationForUser(2);
 	}
 	
 	/**
 	 * Partition phase.
 	 */
 	public void Partition() throws IOException  {
-		String csvFile = "ratings_small2.csv";
+		String csvFile = "ratings.csv";
         BufferedReader br = new BufferedReader(new FileReader(csvFile));
         String line = br.readLine();
 
         while ((line = br.readLine()) != null) {
             storeRating(line);
         }
+		System.out.println("rating:" + rating);
         computeAverage();
+        
         buildSimilarityArray(maxItemId);
         
 		lsh = new LSH(itemToUserMap, userToItemMap);
@@ -59,8 +60,13 @@ public class FinalProject {
         String[] ratings = stringRating.split(",");
         int movieId = Integer.parseInt(ratings[1]);
         int userId = Integer.parseInt(ratings[0]);
+        if(userId > 3000) {
+        	return;
+		}
+		rating++;
         Rating rating = new Rating(movieId, userId,
                 Double.parseDouble(ratings[2]));
+
 		if(!averageItemRating.containsKey(movieId)) {
 			averageItemRating.put(movieId,rating.rating);
 		}
@@ -92,7 +98,8 @@ public class FinalProject {
 	 * @param maxValue   maximum value of itemId.
 	 */
 	public void buildSimilarityArray(int maxValue) {
-		int N = itemToUserMap.size();
+
+        int N = itemToUserMap.size();
 		keyArray = new Integer[N];
         Sindex = new Integer[maxValue + 2];
         itemToUserMap.keySet().toArray(keyArray);
@@ -118,14 +125,6 @@ public class FinalProject {
         list.get(key).add(value);
     }
 	
-	public void Shuffle(Sim_key key, Double[] sim, Map<Sim_key, List<Double[]>> list) {
-		List<Double[]> simList;
-		if(!list.containsKey(key)) {
-			simList = new ArrayList<Double[]>();
-            list.put(key, simList);
-        }
-        list.get(key).add(sim);
-	}
 
 	/**
 	 * Intra-Similarity phase.
@@ -134,7 +133,6 @@ public class FinalProject {
 		for(int bucketId: bucketMap.keySet()) {
 			intra_sim_map(bucketMap.get(bucketId));
 		}
-		//System.out.println("Size of S: " + S.size());
 	}
 
 	/**
@@ -151,7 +149,6 @@ public class FinalProject {
 		Rating tmpValue1, tmpValue2;
 		int user1, user2;
 		double rate1, rate2;
-		Sim_key simKey;
 		
 		// For every pair in items list, compute similarity.
 		for (int item1Index = 0; item1Index < items.size() - 1; item1Index++) {
@@ -187,9 +184,8 @@ public class FinalProject {
 				if(Double.isNaN(similarity)) {
 					similarity = 0;
 				}
-				simKey = new Sim_key(items.get(item1Index), items.get(item2Index));
-				similarityMap.put(simKey, similarity);
-				similarityArray[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = similarity;
+
+				similarityArray[Sindex[items.get(item1Index)]][Sindex[items.get(item2Index)]] = similarity;
 			}
 		}
 	}
@@ -202,16 +198,8 @@ public class FinalProject {
         Map.Entry<Integer, List<Rating>> entry;
         while (it.hasNext()) {
         	entry = (Map.Entry)it.next();
-        	Inter_sim_map (entry.getKey(), entry.getValue());
-        }
-        
-        Iterator it2 = itemSimMap.entrySet().iterator();
-        Map.Entry<Sim_key, List<Double[]>> entry2;
-        while (it2.hasNext()) {
-        	entry2 = (Map.Entry)it2.next();
-        	Inter_sim_reduce(entry2.getKey(), entry2.getValue());
-        }
-        //System.out.println("Size of S: " + S.size());
+        	Inter_sim_map (entry.getValue());
+		}    
 	}
 	
 	/**
@@ -219,11 +207,8 @@ public class FinalProject {
 	 * @param userId
 	 * @param list
 	 */
-	public void Inter_sim_map(int userId, List<Rating> list) {
+	public void Inter_sim_map(List<Rating> list) {
 		Rating rate1, rate2;
-		double riBar, rjBar;
-		Double[] itemSim = new Double[2];
-		Sim_key simKey;
 	
 		// For every pair in list.
 		for (int i = 0; i < list.size() - 1; i++) {
@@ -234,36 +219,53 @@ public class FinalProject {
 				// If the items don't belong in the same bucket.
 				if(lsh.getItemBucket(rate1.getMovieId()) !=
 						lsh.getItemBucket(rate2.getMovieId())) {
-					riBar = averageItemRating.get(rate1.getMovieId());
-					rjBar = averageItemRating.get(rate2.getMovieId());
-					itemSim[0] = rate1.getRating() - riBar;
-					itemSim[1] = rate2.getRating() - rjBar;
-					simKey = new Sim_key(rate1.getMovieId(), rate2.getMovieId());
-					Shuffle(simKey, itemSim, itemSimMap);
+					computeSimilarity(rate1.getMovieId(), rate2.getMovieId());
 				}
 			}
 		}	
 	}
-	
-	/**
-	 * Reduce the similarity.
-	 * @param simKey
-	 * @param L
-	 */
-	public void Inter_sim_reduce(Sim_key simKey, List<Double[]> L) {
-		Double[] tmp;
-		double sij, sum, pi, pj;
-		sum = 0; pi = 0; pj = 0;
-		
-		for (int i = 0; i < L.size(); i++) {
-			tmp = L.get(i);
-			sum += tmp[0] * tmp[1];
-			pi += tmp[0] * tmp[0];
-			pj += tmp[1] * tmp[1];
+
+	public void computeSimilarity(int movieID1, int movieId2) {
+		if(similarityArray[Sindex[movieID1]][Sindex[movieId2]] != 0.0d) {
+			return;
 		}
-		sij = sum / Math.sqrt(pi * pj);
-		similarityMap.put(simKey, sij);
-		similarityArray[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
+		
+		double similarity, sum, pi, pj, averageItem1Rating, averageItem2Rating;
+		sum = 0; pi = 0; pj = 0;
+		ListIterator<Rating> ratingIterator1, ratingIterator2;
+		averageItem1Rating = averageItemRating.get(movieID1);
+		averageItem2Rating = averageItemRating.get(movieId2);
+
+		Rating tmpValue1, tmpValue2;
+		int user1, user2;
+		double rate1, rate2;
+		Sim_key simKey;
+
+		ratingIterator1 = itemToUserMap.get(movieID1).listIterator();
+		while (ratingIterator1.hasNext()) {
+			tmpValue1 = ratingIterator1.next();
+			user1 = tmpValue1.getUser();
+			rate1 = tmpValue1.getRating();
+
+			ratingIterator2 = itemToUserMap.get(movieId2).listIterator();
+			while (ratingIterator2.hasNext()) {
+				tmpValue2 = ratingIterator2.next();
+				user2 = tmpValue2.getUser();
+				rate2 = tmpValue2.getRating();
+
+				// If the same user.
+				if (user1 == user2) {
+					sum += (rate1 - averageItem1Rating) * (rate2 - averageItem2Rating);
+					pi += (rate1 - averageItem1Rating) * (rate1 - averageItem1Rating);
+					pj += (rate2 - averageItem2Rating) * (rate2 - averageItem2Rating);
+				}
+			}
+		}
+		similarity = sum / Math.sqrt(pi * pj);
+		if(Double.isNaN(similarity)) {
+			similarity = 0;
+		}
+        similarityArray[Sindex[movieID1]][Sindex[movieId2]] = similarity;
 	}
 	
 	/**
@@ -344,74 +346,6 @@ public class FinalProject {
 				return true;
 		}
 		return false;
-	}
-	
-	/**
-	 * Find the top three recommend items for the given user.
-	 * @param userID
-	 */
-	public void findRecommendationForUser2(int userID) {	
-		List<Rating> userExistingRatings = userToItemMap.get(userID);
-		Map<Integer, Double> mostSimilar = new HashMap<Integer, Double>();
-		// Find the most similar item to every item this user has rated.
-		for (Rating currentRating: userExistingRatings) {
-			double currentMostSimilar = Double.MIN_VALUE;
-			int currentMostSimilarItem = -1;
-			int itemId = currentRating.getMovieId();
-			
-			Iterator it = similarityMap.entrySet().iterator();
-		    Map.Entry<Sim_key, Double> entry;
-		    while (it.hasNext()) {
-		    	entry = (Map.Entry)it.next();
-		    	if (entry.getKey().hasKey(itemId) && 
-		    			entry.getValue() > currentMostSimilar) {
-		    		currentMostSimilar = entry.getValue();
-					currentMostSimilarItem = entry.getKey().getOtherKey(itemId);
-		    	}
-		    }
-		   
-		    // Avoid same suggestion.
-		    if(!mostSimilar.containsKey(currentMostSimilarItem))
-		    	mostSimilar.put(currentMostSimilarItem, currentMostSimilar);
-		}
-		
-		// Find top 3 similar Items
-		double similar1 = Double.MIN_VALUE;
-		double similar2 = Double.MIN_VALUE;
-		double similar3 = Double.MIN_VALUE;
-		int item1 = -1, item2 = 1, item3 = -1;
-		
-		Iterator it2 = mostSimilar.entrySet().iterator();
-	    Map.Entry<Integer, Double> entry2;
-	    while (it2.hasNext()) {
-	    	entry2 = (Map.Entry)it2.next();
-	    	if(isWatched(userID, entry2.getKey())){
-	    		continue;
-	    	}
-	    	
-	    	if (entry2.getValue() > similar1){
-	    		similar3 = similar2;
-				item3 = item2;
-				similar2 = similar1;
-				item2 = item1;
-				similar1 = entry2.getValue();
-				item1 = entry2.getKey();
-			}
-			else if (entry2.getValue() > similar2) {
-				similar3 = similar2;
-				item3 = item2;
-				similar2 = entry2.getValue();
-				item2 = entry2.getKey();
-			}
-			else if (entry2.getValue() > similar3) {
-				similar3 = entry2.getValue();
-				item3 = entry2.getKey();
-			}
-	    }
-	    
-	    System.out.println(item1);
-		System.out.println(item2);
-		System.out.println(item3);
 	}
 	
 }
