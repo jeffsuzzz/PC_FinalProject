@@ -35,7 +35,7 @@ public class FinalProject extends Task {
 	 * Partition phase.
 	 */
 	public void Partition() throws IOException  {
-		String csvFile = "ratings.csv";
+		String csvFile = "ratings_small.csv";
         BufferedReader br = new BufferedReader(new FileReader(csvFile));
         String line = br.readLine();
 
@@ -60,18 +60,16 @@ public class FinalProject extends Task {
         String[] ratings = stringRating.split(",");
         int movieId = Integer.parseInt(ratings[1]);
         int userId = Integer.parseInt(ratings[0]);
+        double userRating = Double.parseDouble(ratings[2]);
         if(userId > 3000) {
         	return;
 		}
-		rating++;
-        Rating rating = new Rating(movieId, userId,
-                Double.parseDouble(ratings[2]));
-
+        Rating rating = new Rating(movieId, userId, userRating);
 		if(!averageItemRating.containsKey(movieId)) {
-			averageItemRating.put(movieId,rating.rating);
+			averageItemRating.put(movieId, userRating);
 		}
 		else {
-			averageItemRating.put(movieId, averageItemRating.get(movieId) + rating.movieId );
+			averageItemRating.put(movieId, averageItemRating.get(movieId) + userRating );
 		}
         Shuffle(movieId, rating, itemToUserMap);
         Shuffle(userId, rating, userToItemMap);
@@ -239,7 +237,6 @@ public class FinalProject extends Task {
 		Rating tmpValue1, tmpValue2;
 		int user1, user2;
 		double rate1, rate2;
-		Sim_key simKey;
 
 		ratingIterator1 = itemToUserMap.get(movieID1).listIterator();
 		while (ratingIterator1.hasNext()) {
