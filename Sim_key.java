@@ -38,7 +38,7 @@ public class Sim_key {
 	
 	@Override
 	public int hashCode() {
-		return Integer.hashCode(movieId1) + Integer.hashCode(movieId2);
+		return movieId1 + movieId2;
 	}
 	
 	@Override

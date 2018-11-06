@@ -229,14 +229,14 @@ public class FinalProject {
 		S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
 	}
 	
-	public void findRecommendationForUser(int userID) {
+	public void findRecommendationForUser(int userID) {	
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		ArrayList<Integer> mostSimilar = new ArrayList<>();
 		for (Rating currentRating: userExistingRatings) {
 
 			double currentMostSimilar = Double.MIN_VALUE;
 			int currentMostSimilarItem = -1;
-			int itemId = currentRating.movieId;
+			int itemId = currentRating.getMovieId();
 			int index = Sindex[itemId];
 			for(int i = 0; i < S2[index].length; i++) {
 				if(S2[index][i] > currentMostSimilar) {
@@ -244,7 +244,9 @@ public class FinalProject {
 					currentMostSimilarItem = keyArray[i];
 				}
 			}
+
 			mostSimilar.add(currentMostSimilarItem);
+			
 		}
 
 		//After this Find top 3 similar Items
@@ -254,17 +256,19 @@ public class FinalProject {
 		int item1 = -1, item2 = 1, item3 = -1;
 
 		for(int index = 0; index < userExistingRatings.size(); index++) {
-
-			if(!isWatched(userID, mostSimilar.get(index))) {
-
-				int firstItemIdIndex = Sindex[userExistingRatings.get(index).movieId];
+			// Avoid suggesting the same item
+			if(!isWatched(userID, mostSimilar.get(index)) &&
+					mostSimilar.get(index) != item1 &&
+					mostSimilar.get(index) != item2 &&
+					mostSimilar.get(index) != item3) {
+				int firstItemIdIndex = Sindex[userExistingRatings.get(index).getMovieId()];
 				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
+				 
 				if(S2[firstItemIdIndex][secondItemIdIndex] > similar1){
 					similar1 = S2[firstItemIdIndex][secondItemIdIndex];
 					item1 = mostSimilar.get(index);
 				}
 				else if(S2[firstItemIdIndex][secondItemIdIndex] > similar2) {
-
 					similar2 = S2[firstItemIdIndex][secondItemIdIndex];
 					item2 = mostSimilar.get(index);
 				}
@@ -279,7 +283,6 @@ public class FinalProject {
 		System.out.println(item3);
 	}
 
-
 	public boolean isWatched(int userID, int itemId) {
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		for(Rating rating : userExistingRatings) {
@@ -288,4 +291,5 @@ public class FinalProject {
 		}
 		return false;
 	}
+
 }
