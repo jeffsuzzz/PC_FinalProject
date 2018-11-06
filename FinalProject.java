@@ -232,8 +232,9 @@ public class FinalProject {
 	public void findRecommendationForUser(int userID) {	
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		ArrayList<Integer> mostSimilar = new ArrayList<>();
+		
+		// Find the most similar item to every item this user has rated.
 		for (Rating currentRating: userExistingRatings) {
-
 			double currentMostSimilar = Double.MIN_VALUE;
 			int currentMostSimilarItem = -1;
 			int itemId = currentRating.getMovieId();
@@ -246,7 +247,6 @@ public class FinalProject {
 			}
 
 			mostSimilar.add(currentMostSimilarItem);
-			
 		}
 
 		//After this Find top 3 similar Items
@@ -286,10 +286,67 @@ public class FinalProject {
 	public boolean isWatched(int userID, int itemId) {
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		for(Rating rating : userExistingRatings) {
-			if (rating.movieId == itemId)
+			if (rating.getMovieId() == itemId)
 				return true;
 		}
 		return false;
 	}
-
+	
+	public void findRecommendationForUser2(int userID) {	
+		List<Rating> userExistingRatings = userToItemMap.get(userID);
+		//ArrayList<Integer> mostSimilar = new ArrayList<>();
+		Map<Integer, Double> mostSimilar = new HashMap<Integer, Double>();
+		// Find the most similar item to every item this user has rated.
+		for (Rating currentRating: userExistingRatings) {
+			double currentMostSimilar = Double.MIN_VALUE;
+			int currentMostSimilarItem = -1;
+			int itemId = currentRating.getMovieId();
+			
+			Iterator it = S.entrySet().iterator();
+		    Map.Entry<Sim_key, Double> entry;
+		    while (it.hasNext()) {
+		    	entry = (Map.Entry)it.next();
+		    	if (entry.getKey().hasKey(itemId) && 
+		    			entry.getValue() > currentMostSimilar) {
+		    		currentMostSimilar = entry.getValue();
+					currentMostSimilarItem = entry.getKey().getOtherKey(itemId);
+		    	}
+		    }
+		   
+		    // Avoid same suggestion.
+		    if(!mostSimilar.containsKey(currentMostSimilarItem))
+		    	mostSimilar.put(currentMostSimilarItem, currentMostSimilar);
+		}
+		
+		// Find top 3 similar Items
+		double similar1 = Double.MIN_VALUE;
+		double similar2 = Double.MIN_VALUE;
+		double similar3 = Double.MIN_VALUE;
+		int item1 = -1, item2 = 1, item3 = -1;
+		
+		Iterator it2 = mostSimilar.entrySet().iterator();
+	    Map.Entry<Integer, Double> entry2;
+	    while (it2.hasNext()) {
+	    	entry2 = (Map.Entry)it2.next();
+	    	if(isWatched(userID, entry2.getKey())){
+	    		continue;
+	    	}
+	    	
+	    	if (entry2.getValue() > similar1){
+				similar1 = entry2.getValue();
+				item1 = entry2.getKey();
+			}
+			else if (entry2.getValue() > similar2) {
+				similar2 = entry2.getValue();
+				item2 = entry2.getKey();
+			}
+			else if (entry2.getValue() > similar3) {
+				similar3 = entry2.getValue();
+				item3 = entry2.getKey();
+			}
+	    }
+	    System.out.println(item1);
+		System.out.println(item2);
+		System.out.println(item3);
+	}
 }
