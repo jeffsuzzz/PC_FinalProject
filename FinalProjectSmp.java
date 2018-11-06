@@ -126,13 +126,21 @@ public class FinalProjectSmp extends Task{
 	}
 
 	public void runIntraSimilarity() {
-		for(int bucketId: bucketMap.keySet()) {
-			intra_sim_map(bucketMap.get(bucketId));
-		}
+		parallelFor (0, bucketMap.size() - 1).exec (new Loop() {
+        	HashMapVbl<Sim_key, Double>localSVbl;
+        	
+        	public void start(){
+        		localSVbl = threadLocal(sVbl);
+        	}
+        	
+        	public void run (int n) {
+        		intra_sim_map(bucketMap.get(n), localSVbl);
+        	}
+        });
 		System.out.println("Size of S: " + sVbl.size());
 	}
 
-	public void intra_sim_map(ArrayList<Integer> items) {
+	public void intra_sim_map(ArrayList<Integer> items, HashMapVbl<Sim_key, Double> s) {
 		if (items.size() == 1) {
 			return;
 		}
@@ -178,7 +186,7 @@ public class FinalProjectSmp extends Task{
 					similarity = 0;
 				}
 				simKey = new Sim_key(items.get(item1Index), items.get(item2Index));
-				sVbl.put(simKey, similarity);
+				s.put(simKey, similarity);
 				//S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = similarity;
 			}
 		}
