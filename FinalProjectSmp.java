@@ -19,6 +19,7 @@ public class FinalProjectSmp extends Task{
 	public Map<Integer, ArrayList<Integer> > bucketMap ;
 	public Integer[] keyArray;
 	LSH lsh;
+	int maxItemId;
 	
 	HashMapVbl<Sim_key, Double> similarityMapVbl = new HashMapVbl<Sim_key, Double>();
 	HashMapVbl<Sim_key, Double[]> itemSimMapVbl = new HashMapVbl<Sim_key, Double[]>();
@@ -46,7 +47,7 @@ public class FinalProjectSmp extends Task{
             storeRating(line);
         }
         computeAverage();
-        buildSimilarityArray(299);
+        buildSimilarityArray(maxItemId);
         
 		lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
@@ -72,6 +73,8 @@ public class FinalProjectSmp extends Task{
 		}
         Shuffle(movieId, rating, itemToUserMap);
         Shuffle(userId,rating, userToItemMap);
+        if(movieId > maxItemId)
+            maxItemId = movieId;
     }
 
 	/**
@@ -89,6 +92,7 @@ public class FinalProjectSmp extends Task{
 	
 	/**
 	 * Build an NxN array to store similarities between two items.
+	 * N is the number of different items.
 	 * @param maxValue
 	 */
 	public void buildSimilarityArray(int maxValue) {
@@ -268,7 +272,6 @@ public class FinalProjectSmp extends Task{
 		double riBar, rjBar;
 		Double[] itemSim = new Double[2];
 		Sim_key simKey;
-		//System.out.println(userId + " " + list.size());
 	
 		// For every pair in list, if the movies don't belong in the same group.
 		for (int i = 0; i < list.size() - 1; i++) {

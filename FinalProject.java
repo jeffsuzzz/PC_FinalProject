@@ -18,6 +18,7 @@ public class FinalProject {
 	public Map<Integer, ArrayList<Integer> > bucketMap ;
 	public Integer[] keyArray;
 	LSH lsh;
+	int maxItemId;
 	
 	/**
 	 * Main program.
@@ -43,7 +44,7 @@ public class FinalProject {
             storeRating(line);
         }
         computeAverage();
-        buildSimilarityArray(299);
+        buildSimilarityArray(maxItemId);
         
 		lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
@@ -67,7 +68,9 @@ public class FinalProject {
 			averageItemRating.put(movieId, averageItemRating.get(movieId) + rating.movieId );
 		}
         Shuffle(movieId, rating, itemToUserMap);
-        Shuffle(userId,rating, userToItemMap);
+        Shuffle(userId, rating, userToItemMap);
+        if(movieId > maxItemId)
+            maxItemId = movieId;
     }
 
 	/**
@@ -85,12 +88,13 @@ public class FinalProject {
 	
 	/**
 	 * Build an NxN array to store similarities between two items.
+	 * N is the number of different items.
 	 * @param maxValue   maximum value of itemId.
 	 */
 	public void buildSimilarityArray(int maxValue) {
 		int N = itemToUserMap.size();
 		keyArray = new Integer[N];
-        Sindex = new Integer[maxValue + 1];
+        Sindex = new Integer[maxValue + 2];
         itemToUserMap.keySet().toArray(keyArray);
         
         for (int i = 0; i < N; i++) {
