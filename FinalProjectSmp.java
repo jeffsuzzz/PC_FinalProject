@@ -11,9 +11,8 @@ import edu.rit.pj2.Task;
 public class FinalProjectSmp extends Task{
 
 	public Map<Integer, Double> averageItemRating = new HashMap<Integer, Double>();
-	//public Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
 	public Integer[] Sindex;
-	public double[][] S2;
+	public double[][] similarityArray;
 	public Map<Integer, List<Rating>> itemToUserMap = new HashMap<Integer, List<Rating>>();
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
 	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
@@ -21,7 +20,7 @@ public class FinalProjectSmp extends Task{
 	public Integer[] keyArray;
 	LSH lsh;
 	
-	HashMapVbl<Sim_key, Double> sVbl = new HashMapVbl<Sim_key, Double>();
+	HashMapVbl<Sim_key, Double> similarityMapVbl = new HashMapVbl<Sim_key, Double>();
 	HashMapVbl<Sim_key, Double[]> itemSimMapVbl = new HashMapVbl<Sim_key, Double[]>();
 	
 	/**
@@ -90,7 +89,7 @@ public class FinalProjectSmp extends Task{
         for (int i = 0; i < N; i++) {
         	Sindex[keyArray[i]] = i;
         }
-        S2 = new double[N][N];
+        similarityArray = new double[N][N];
 	}
 	
 	/**
@@ -130,14 +129,14 @@ public class FinalProjectSmp extends Task{
         	HashMapVbl<Sim_key, Double>localSVbl;
         	
         	public void start(){
-        		localSVbl = threadLocal(sVbl);
+        		localSVbl = threadLocal(similarityMapVbl);
         	}
         	
         	public void run (int n) {
         		intra_sim_map(bucketMap.get(n), localSVbl);
         	}
         });
-		System.out.println("Size of S: " + sVbl.size());
+		System.out.println("Size of S: " + similarityMapVbl.size());
 	}
 
 	public void intra_sim_map(ArrayList<Integer> items, HashMapVbl<Sim_key, Double> s) {
@@ -220,14 +219,14 @@ public class FinalProjectSmp extends Task{
         	HashMapVbl<Sim_key, Double>localSVbl;
         	
         	public void start(){
-        		localSVbl = threadLocal(sVbl);
+        		localSVbl = threadLocal(similarityMapVbl);
         	}
         	
         	public void run (int n) {
         		Inter_sim_reduce(keyArray2[n], itemSimMap.get(keyArray2[n]), localSVbl);
         	}
         });
-        System.out.println("Size of S: " + sVbl.size());
+        System.out.println("Size of S: " + similarityMapVbl.size());
 	}
 	
 	public void Inter_sim_map(int userId, List<Rating> list, HashMapVbl<Sim_key, Double[]> map) {
@@ -282,9 +281,9 @@ public class FinalProjectSmp extends Task{
 			int currentMostSimilarItem = -1;
 			int itemId = currentRating.getMovieId();
 			int index = Sindex[itemId];
-			for(int i = 0; i < S2[index].length; i++) {
-				if(S2[index][i] > currentMostSimilar) {
-					currentMostSimilar = S2[index][i];
+			for(int i = 0; i < similarityArray[index].length; i++) {
+				if(similarityArray[index][i] > currentMostSimilar) {
+					currentMostSimilar = similarityArray[index][i];
 					currentMostSimilarItem = keyArray[i];
 				}
 			}
@@ -307,16 +306,16 @@ public class FinalProjectSmp extends Task{
 				int firstItemIdIndex = Sindex[userExistingRatings.get(index).getMovieId()];
 				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
 				 
-				if(S2[firstItemIdIndex][secondItemIdIndex] > similar1){
-					similar1 = S2[firstItemIdIndex][secondItemIdIndex];
+				if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar1){
+					similar1 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item1 = mostSimilar.get(index);
 				}
-				else if(S2[firstItemIdIndex][secondItemIdIndex] > similar2) {
-					similar2 = S2[firstItemIdIndex][secondItemIdIndex];
+				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar2) {
+					similar2 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item2 = mostSimilar.get(index);
 				}
-				else if(S2[firstItemIdIndex][secondItemIdIndex] > similar3) {
-					similar3 = S2[firstItemIdIndex][secondItemIdIndex];
+				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar3) {
+					similar3 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item3 = mostSimilar.get(index);
 				}
 			}
@@ -345,7 +344,7 @@ public class FinalProjectSmp extends Task{
 			int currentMostSimilarItem = -1;
 			int itemId = currentRating.getMovieId();
 			
-			Iterator it = sVbl.entrySet().iterator();
+			Iterator it = similarityMapVbl.entrySet().iterator();
 		    Map.Entry<Sim_key, Double> entry;
 		    while (it.hasNext()) {
 		    	entry = (Map.Entry)it.next();

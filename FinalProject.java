@@ -9,9 +9,9 @@ import java.util.Map;
 public class FinalProject {
 
 	public Map<Integer, Double> averageItemRating = new HashMap<Integer, Double>();
-	public Map<Sim_key, Double> S = new HashMap<Sim_key, Double>();
+	public Map<Sim_key, Double> similarityMap = new HashMap<Sim_key, Double>();
 	public Integer[] Sindex;
-	public double[][] S2;
+	public double[][] similarityArray;
 	public Map<Integer, List<Rating>> itemToUserMap = new HashMap<Integer, List<Rating>>();
 	public Map<Integer, List<Rating>> userToItemMap = new HashMap<Integer, List<Rating>>();
 	public Map<Sim_key, List<Double[]>> itemSimMap = new HashMap<Sim_key, List<Double[]>>();
@@ -85,7 +85,7 @@ public class FinalProject {
         for (int i = 0; i < N; i++) {
         	Sindex[keyArray[i]] = i;
         }
-        S2 = new double[N][N];
+        similarityArray = new double[N][N];
 	}
 	
 	/**
@@ -165,8 +165,8 @@ public class FinalProject {
 					similarity = 0;
 				}
 				simKey = new Sim_key(items.get(item1Index), items.get(item2Index));
-				S.put(simKey, similarity);
-				S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = similarity;
+				similarityMap.put(simKey, similarity);
+				similarityArray[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = similarity;
 			}
 		}
 	}
@@ -225,8 +225,8 @@ public class FinalProject {
 			pj += tmp[1] * tmp[1];
 		}
 		sij = sum / Math.sqrt(pi * pj);
-		S.put(simKey, sij);
-		S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
+		similarityMap.put(simKey, sij);
+		similarityArray[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
 	}
 	
 	public void findRecommendationForUser(int userID) {	
@@ -239,9 +239,9 @@ public class FinalProject {
 			int currentMostSimilarItem = -1;
 			int itemId = currentRating.getMovieId();
 			int index = Sindex[itemId];
-			for(int i = 0; i < S2[index].length; i++) {
-				if(S2[index][i] > currentMostSimilar) {
-					currentMostSimilar = S2[index][i];
+			for(int i = 0; i < similarityArray[index].length; i++) {
+				if(similarityArray[index][i] > currentMostSimilar) {
+					currentMostSimilar = similarityArray[index][i];
 					currentMostSimilarItem = keyArray[i];
 				}
 			}
@@ -264,16 +264,22 @@ public class FinalProject {
 				int firstItemIdIndex = Sindex[userExistingRatings.get(index).getMovieId()];
 				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
 				 
-				if(S2[firstItemIdIndex][secondItemIdIndex] > similar1){
-					similar1 = S2[firstItemIdIndex][secondItemIdIndex];
+				if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar1){
+					similar3 = similar2;
+					item3 = item2;
+					similar2 = similar1;
+					item2 = item1;
+					similar1 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item1 = mostSimilar.get(index);
 				}
-				else if(S2[firstItemIdIndex][secondItemIdIndex] > similar2) {
-					similar2 = S2[firstItemIdIndex][secondItemIdIndex];
+				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar2) {
+					similar3 = similar2;
+					item3 = item2;
+					similar2 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item2 = mostSimilar.get(index);
 				}
-				else if(S2[firstItemIdIndex][secondItemIdIndex] > similar3) {
-					similar3 = S2[firstItemIdIndex][secondItemIdIndex];
+				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar3) {
+					similar3 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item3 = mostSimilar.get(index);
 				}
 			}
@@ -302,7 +308,7 @@ public class FinalProject {
 			int currentMostSimilarItem = -1;
 			int itemId = currentRating.getMovieId();
 			
-			Iterator it = S.entrySet().iterator();
+			Iterator it = similarityMap.entrySet().iterator();
 		    Map.Entry<Sim_key, Double> entry;
 		    while (it.hasNext()) {
 		    	entry = (Map.Entry)it.next();
@@ -333,10 +339,16 @@ public class FinalProject {
 	    	}
 	    	
 	    	if (entry2.getValue() > similar1){
+	    		similar3 = similar2;
+				item3 = item2;
+				similar2 = similar1;
+				item2 = item1;
 				similar1 = entry2.getValue();
 				item1 = entry2.getKey();
 			}
 			else if (entry2.getValue() > similar2) {
+				similar3 = similar2;
+				item3 = item2;
 				similar2 = entry2.getValue();
 				item2 = entry2.getKey();
 			}
