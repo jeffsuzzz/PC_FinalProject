@@ -2,48 +2,27 @@ import java.util.*;
 
 public class LSH {
 
-
-
     ArrayList<BitSet> shingleMatrix;
-
     Map<Integer, List<Rating>> itemToUserMap;
-
     Map<Integer, List<Rating>> userToItemMap;
-
     ArrayList< ArrayList<Integer> > signatureMatrix;
 
-
     Map<Integer, Integer> itemToMatrixColIndex;
-
     Map<Integer, Integer> matrixColIndexToItem;
-
     Map<Integer, Integer> userToMatrixRowlIndex;
-
     Map<Integer, Integer> matrixRowIndexToUser;
-
     Map<Integer, Integer> itemToBucket;
-
     Map<Integer, Integer> itemToAccum;
-
     Map<Integer, ArrayList<Integer>> buckets;
-
     Map<Integer, ArrayList<Integer>> bandHashMap;
 
     public static final long LARGE_PRIME =  433494437;
-
     public static final int NUMBER_OF_BUCKETS = 12;
-
     public static final int NUMBER_OF_PERMUTATIONS = 100;
-
     public static final int BAND_SIZE = 4;
-
     int bucketId;
-
     int a = 98143; //(a*x + b ) *p
     int b = 99989;
-
-
-
 
     LSH(Map<Integer, List<Rating>> itemToUserMap, Map<Integer, List<Rating>> userToItemMap) {
 
@@ -62,7 +41,6 @@ public class LSH {
         initUserAndItemMaps();
         itemToBucket = new HashMap<>();
         bucketId = 1;
-
     }
 
     public void initUserAndItemMaps() {
@@ -82,7 +60,6 @@ public class LSH {
         }
     }
 
-
     public void createGroups() {
         buildShingleMatrix();
         initShingleMatrix();
@@ -90,24 +67,23 @@ public class LSH {
         createBucket();
         allocateBucket();
     }
+    
     public void buildShingleMatrix() {
 
         int noOfUsers = userToMatrixRowlIndex.size();
         int noOfItems = itemToMatrixColIndex.size();
 
-        System.out.println(noOfItems);
-        System.out.println(noOfUsers);
+        //System.out.println(noOfItems);
+        //System.out.println(noOfUsers);
         for( int index = 0; index < noOfUsers; index++) {
             BitSet itemBitSet = new BitSet(noOfItems);
             //set all the bits to 0 intially
             itemBitSet.clear();
             shingleMatrix.add(itemBitSet);
         }
-
     }
 
     public void initShingleMatrix() {
-
 
         for(int userID: userToItemMap.keySet()) {
 
@@ -158,14 +134,9 @@ public class LSH {
 
     public void createBucket() {
 
-
         int end = signatureMatrix.size()/BAND_SIZE;
         for (int bandIndex = 0; bandIndex < end; bandIndex++) {
-
-
             computeBandWiseHash(bandIndex);
-
-
         }
     }
 
@@ -213,12 +184,8 @@ public class LSH {
                     itemToBucket.put(item,bucket2);
                 buckets.get(bucket2).addAll(buckets.get(bucket1));
                 buckets.remove(bucket1);
-
             }
-
         }
-
-
     }
 
     public void allocateDiffBucket(int item1Index, int item2Index) {
@@ -240,11 +207,7 @@ public class LSH {
             //System.out.println(bucketId);
             bucketId++;
         }
-
-
     }
-
-
 
     public void computeBandForHash(int itemIndex , int bandIndex) {
 
@@ -265,28 +228,19 @@ public class LSH {
         bandHashMap.get(bandIndex).add(hash);
     }
 
-
-
-
     public void computeBandWiseHash(int bandIndex) {
-
         int noOfItems = itemToMatrixColIndex.size();
         for(int itemIndex = 0; itemIndex < noOfItems ; itemIndex++ ) {
-
             computeBandForHash(itemIndex, bandIndex);
-
         }
-
     }
 
-
     public void allocateBucket() {
-
         int noOfItems = itemToMatrixColIndex.size();
-
         int noOfBands = bandHashMap.size();
+        
         for(int itemIndex = 0; itemIndex < noOfItems ; itemIndex++ ) {
-
+        	
             int acc = 0;
            for(int bandID: bandHashMap.keySet()) {
                if(bandHashMap.get(bandID).get(itemIndex) < 0) {
@@ -314,10 +268,7 @@ public class LSH {
            buckets.get(bucketNumber).add(itemID);
 
         }
-
     }
-
-
 
     public void computeBandSimilarity(int bandIndex) {
 
@@ -337,7 +288,6 @@ public class LSH {
         }
     }
 
-
     public boolean isSimilar(int item1Index, int item2Index, int bandIndex) {
 
         int startIndex = bandIndex * BAND_SIZE;
@@ -352,11 +302,8 @@ public class LSH {
             }
             startIndex++;
         }
-
         return true;
     }
-
-
 
     public void print() {
 
