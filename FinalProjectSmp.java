@@ -46,7 +46,7 @@ public class FinalProjectSmp extends Task{
             storeRating(line);
         }
         computeAverage();
-        buildSimilarityArray(300);
+        buildSimilarityArray(299);
         
 		lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
@@ -54,6 +54,10 @@ public class FinalProjectSmp extends Task{
 		lsh.print();
 	}
 
+	/**
+	 * Store userId, movieId, rate to two maps.
+	 * @param stringRating
+	 */
 	public void storeRating(String stringRating) {
         String[] ratings = stringRating.split(",");
         int movieId = Integer.parseInt(ratings[1]);
@@ -70,6 +74,9 @@ public class FinalProjectSmp extends Task{
         Shuffle(userId,rating, userToItemMap);
     }
 
+	/**
+	 * Compute the average rating for every items.
+	 */
 	public void computeAverage() {
 		Iterator it = itemToUserMap.entrySet().iterator();
         while (it.hasNext()) {
@@ -80,10 +87,14 @@ public class FinalProjectSmp extends Task{
         }
 	}
 	
+	/**
+	 * Build an NxN array to store similarities between two items.
+	 * @param maxValue
+	 */
 	public void buildSimilarityArray(int maxValue) {
 		int N = itemToUserMap.size();
 		keyArray = new Integer[N];
-        Sindex = new Integer[maxValue];	// Max value of itemId + 1.
+        Sindex = new Integer[maxValue + 1];
         itemToUserMap.keySet().toArray(keyArray);
         
         for (int i = 0; i < N; i++) {
@@ -116,14 +127,23 @@ public class FinalProjectSmp extends Task{
         list.get(key).add(sim);
 	}
 	
+	/**
+	 * Shuffle the values in map2 to the list in map1.
+	 * @param map1
+	 * @param map2
+	 */
 	public void interShuffle(Map<Sim_key, List<Double[]>> map1, Map<Sim_key, Double[]> map2) {
 		Iterator it = map2.entrySet().iterator();
+		Map.Entry<Sim_key, Double[]> pair;
         while (it.hasNext()) {
-            Map.Entry<Sim_key, Double[]> pair = (Map.Entry)it.next();
+            pair = (Map.Entry)it.next();
             Shuffle(pair.getKey(), pair.getValue(), map1);
         }
 	}
 
+	/**
+	 * Intra-Similarity phase.
+	 */
 	public void runIntraSimilarity() {
 		parallelFor (0, bucketMap.size() - 1).exec (new Loop() {
         	HashMapVbl<Sim_key, Double>localSVbl;
@@ -139,6 +159,11 @@ public class FinalProjectSmp extends Task{
 		System.out.println("Size of S: " + similarityMapVbl.size());
 	}
 
+	/**
+	 * Compute the similarity of items in the same bucket.
+	 * @param items
+	 * @param s
+	 */
 	public void intra_sim_map(ArrayList<Integer> items, HashMapVbl<Sim_key, Double> s) {
 		if (items.size() == 1) {
 			return;
@@ -191,6 +216,9 @@ public class FinalProjectSmp extends Task{
 		}
 	}
 	
+	/**
+	 * Inter-similarity phase.
+	 */
 	public void Inter_similarity() {     
         int N = userToItemMap.size();
         final Integer[] keyArray = new Integer[N];
@@ -229,6 +257,12 @@ public class FinalProjectSmp extends Task{
         System.out.println("Size of S: " + similarityMapVbl.size());
 	}
 	
+	/**
+	 * Store partial similarity between two items within one user.
+	 * @param userId
+	 * @param list
+	 * @param map
+	 */
 	public void Inter_sim_map(int userId, List<Rating> list, HashMapVbl<Sim_key, Double[]> map) {
 		Rating rate1, rate2;
 		double riBar, rjBar;
@@ -255,6 +289,12 @@ public class FinalProjectSmp extends Task{
 		}	
 	}
 	
+	/**
+	 * Reduce the similarity.
+	 * @param simKey
+	 * @param L
+	 * @param s
+	 */
 	public void Inter_sim_reduce(Sim_key simKey, List<Double[]> L, HashMapVbl<Sim_key, Double> s) {
 		Double[] tmp;
 		double sij, sum, pi, pj;
@@ -271,6 +311,10 @@ public class FinalProjectSmp extends Task{
 		//S2[Sindex[simKey.getKey1()]][Sindex[simKey.getKey2()]] = sij;
 	}
 	
+	/**
+	 * Find the top three recommend items for the given user.
+	 * @param userID
+	 */
 	public void findRecommendationForUser(int userID) {	
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		ArrayList<Integer> mostSimilar = new ArrayList<>();
@@ -307,10 +351,16 @@ public class FinalProjectSmp extends Task{
 				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
 				 
 				if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar1){
+					similar3 = similar2;
+					item3 = item2;
+					similar2 = similar1;
+					item2 = item1;
 					similar1 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item1 = mostSimilar.get(index);
 				}
 				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar2) {
+					similar3 = similar2;
+					item3 = item2;
 					similar2 = similarityArray[firstItemIdIndex][secondItemIdIndex];
 					item2 = mostSimilar.get(index);
 				}
@@ -325,6 +375,12 @@ public class FinalProjectSmp extends Task{
 		System.out.println(item3);
 	}
 
+	/**
+	 * Check if the user has already rated the given item.
+	 * @param userID
+	 * @param itemId
+	 * @return
+	 */
 	public boolean isWatched(int userID, int itemId) {
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
 		for(Rating rating : userExistingRatings) {
@@ -334,9 +390,12 @@ public class FinalProjectSmp extends Task{
 		return false;
 	}
 	
+	/**
+	 * Find the top three recommend items for the given user.
+	 * @param userID
+	 */
 	public void findRecommendationForUser2(int userID) {	
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
-		//ArrayList<Integer> mostSimilar = new ArrayList<>();
 		Map<Integer, Double> mostSimilar = new HashMap<Integer, Double>();
 		// Find the most similar item to every item this user has rated.
 		for (Rating currentRating: userExistingRatings) {
@@ -375,10 +434,16 @@ public class FinalProjectSmp extends Task{
 	    	}
 	    	
 	    	if (entry2.getValue() > similar1){
+	    		similar3 = similar2;
+				item3 = item2;
+				similar2 = similar1;
+				item2 = item1;
 				similar1 = entry2.getValue();
 				item1 = entry2.getKey();
 			}
 			else if (entry2.getValue() > similar2) {
+				similar3 = similar2;
+				item3 = item2;
 				similar2 = entry2.getValue();
 				item2 = entry2.getKey();
 			}
