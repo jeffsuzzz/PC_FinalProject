@@ -27,17 +27,34 @@ public class FinalProjectSmp extends Task{
 	 * @param args   command line argument
 	 */
 	public void main (String[] args) throws Exception {
+		// Run time
+		long startTime = System.nanoTime();
 		Partition();
+		long finishreading = System.nanoTime();
+		double time = (finishreading - startTime) / 1000000;
+		System.out.println ("Time for partition: " + time + " milliseconds");
+		
 		runIntraSimilarity();
+		long finishintra = System.nanoTime();
+		time = (finishintra - finishreading) / 1000000;
+		System.out.println ("Time for Intra: " + time + " milliseconds");
+		
 		Inter_similarity();
+		long finishinter = System.nanoTime();
+		time = (finishinter - finishintra) / 1000000;
+		System.out.println ("Time for Inter: " + time + " milliseconds");
+		
 		findRecommendationForUser(2);
+		long endTime = System.nanoTime();
+		time = (endTime - finishinter) / 1000000;
+		System.out.println ("Time for computing: " + time + " milliseconds");
 	}
 	
 	/**
 	 * Partition phase.
 	 */
 	public void Partition() throws IOException  {
-		String csvFile = "ratings.csv";
+		String csvFile = "rating.csv";
         BufferedReader br = new BufferedReader(new FileReader(csvFile));
         String line = br.readLine();
 
@@ -51,7 +68,6 @@ public class FinalProjectSmp extends Task{
 		lsh = new LSH(itemToUserMap, userToItemMap);
         lsh.createGroups();
 		bucketMap = lsh.getBuckets();
-		//lsh.print();
 	}
 
 	/**
@@ -274,8 +290,7 @@ public class FinalProjectSmp extends Task{
 		}
         similarityArray[Sindex[movieID1]][Sindex[movieId2]] = similarity;
 	}
-	
-	
+
 	
 	/**
 	 * Find the top three recommend items for the given user.
