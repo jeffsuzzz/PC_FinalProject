@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +20,7 @@ public class FinalProjectSmp extends Task{
 	public Integer[] keyArray;
 	LSH lsh;
 	int maxItemId;
+	public ArrayListVbl<Integer[]> recommendList = new ArrayListVbl<Integer[]>();
 	
 	/**
 	 * Main program.
@@ -35,7 +37,7 @@ public class FinalProjectSmp extends Task{
 	 * Partition phase.
 	 */
 	public void Partition() throws IOException  {
-		String csvFile = "ratings_small.csv";
+		String csvFile = "ratings.csv";
         BufferedReader br = new BufferedReader(new FileReader(csvFile));
         String line = br.readLine();
 
@@ -279,40 +281,58 @@ public class FinalProjectSmp extends Task{
 	 * Find the top three recommend items for the given user.
 	 * @param userID
 	 */
-	public void findRecommendationForUser(int userID) {	
-		List<Rating> userExistingRatings = userToItemMap.get(userID);
-		ArrayList<Integer> mostSimilar = new ArrayList<>();
+	public void findRecommendationForUser(int userid) {	
+		final int userID = userid;
+		final List<Rating> userExistingRatings = userToItemMap.get(userID);
+		final double threashold = userFavorateRate(userID);
 		
-		// Find the most similar item to every item this user has rated.
-		for (Rating currentRating: userExistingRatings) {
-			double currentMostSimilar = Double.MIN_VALUE;
-			int currentMostSimilarItem = -1;
-			int itemId = currentRating.getMovieId();
-			int index = Sindex[itemId];
-			for(int i = 0; i < similarityArray[index].length; i++) {
-				if(similarityArray[index][i] > currentMostSimilar) {
-					currentMostSimilar = similarityArray[index][i];
-					currentMostSimilarItem = keyArray[i];
-				}
-			}
-
-			mostSimilar.add(currentMostSimilarItem);
-		}
-
+		parallelFor (0, userExistingRatings.size() - 1).exec (new Loop() {
+			ArrayListVbl<Integer[]> localRecommendList;
+			Rating currentRating;
+			double currentMostSimilar;
+			int currentMostSimilarItem, itemId, index;
+			Integer[] itemPair;
+			
+        	public void start(){
+        		localRecommendList = threadLocal(recommendList);
+        	}
+        	
+        	public void run (int n) {
+        		currentRating = userExistingRatings.get(n);
+        		if(currentRating.getRating() >= threashold) {
+        			currentMostSimilar = Double.MIN_VALUE;
+            		currentMostSimilarItem = -1;
+        			itemId = currentRating.getMovieId();
+        			index = Sindex[itemId];
+        			itemPair = new Integer[2];
+        			itemPair[0] = itemId;
+        			
+        			for(int i = 0; i < similarityArray[index].length; i++) {
+        				if(similarityArray[index][i] > currentMostSimilar &&
+        						!isWatched(userID, keyArray[i])) {
+        					currentMostSimilar = similarityArray[index][i];
+        					currentMostSimilarItem = keyArray[i];
+        				}
+        			}
+        			itemPair[1] = currentMostSimilarItem;
+        			localRecommendList.add(itemPair);
+        		}
+        	}
+        });
+		
 		//After this Find top 3 similar Items
 		double similar1 = Double.MIN_VALUE;
 		double similar2 = Double.MIN_VALUE;
 		double similar3 = Double.MIN_VALUE;
 		int item1 = -1, item2 = 1, item3 = -1;
 
-		for(int index = 0; index < userExistingRatings.size(); index++) {
+		for(int index = 0; index < recommendList.size(); index++) {
 			// Avoid suggesting the same item
-			if(!isWatched(userID, mostSimilar.get(index)) &&
-					mostSimilar.get(index) != item1 &&
-					mostSimilar.get(index) != item2 &&
-					mostSimilar.get(index) != item3) {
-				int firstItemIdIndex = Sindex[userExistingRatings.get(index).getMovieId()];
-				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
+			if(recommendList.get(index)[1] != item1 &&
+					recommendList.get(index)[1] != item2 &&
+					recommendList.get(index)[1] != item3) {
+				int firstItemIdIndex = Sindex[recommendList.get(index)[0]];
+				int secondItemIdIndex = Sindex[recommendList.get(index)[1]];
 				 
 				if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar1){
 					similar3 = similar2;
@@ -320,17 +340,17 @@ public class FinalProjectSmp extends Task{
 					similar2 = similar1;
 					item2 = item1;
 					similar1 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item1 = mostSimilar.get(index);
+					item1 = recommendList.get(index)[1];
 				}
 				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar2) {
 					similar3 = similar2;
 					item3 = item2;
 					similar2 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item2 = mostSimilar.get(index);
+					item2 = recommendList.get(index)[1];
 				}
 				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar3) {
 					similar3 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item3 = mostSimilar.get(index);
+					item3 = recommendList.get(index)[1];
 				}
 			}
 		}
@@ -354,4 +374,21 @@ public class FinalProjectSmp extends Task{
 		return false;
 	}
 	
+	/**
+	 * Get the top one third rate of a user.
+	 * @param userId
+	 * @return
+	 */
+	public double userFavorateRate(int userID) {
+		List<Rating> userExistingRatings = userToItemMap.get(userID);
+		int numberOfItem = userExistingRatings.size();
+		double[] rates = new double[numberOfItem];
+		int i = 0;
+		for(Rating rating : userExistingRatings) {
+			rates[i++] = rating.getRating();
+		}
+		Arrays.sort(rates);
+		int nth = (int) Math.round(numberOfItem * 3 / 4);
+		return rates[nth];
+	}
 }

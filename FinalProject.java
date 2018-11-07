@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -271,22 +272,33 @@ public class FinalProject extends Task {
 	 */
 	public void findRecommendationForUser(int userID) {	
 		List<Rating> userExistingRatings = userToItemMap.get(userID);
-		ArrayList<Integer> mostSimilar = new ArrayList<>();
-		
-		// Find the most similar item to every item this user has rated.
+		ArrayList<Integer[]> mostSimilar = new ArrayList<Integer[]>();
+		double threashold = userFavorateRate(userID);
+
+		double currentMostSimilar;
+		int currentMostSimilarItem, itemId, index;
+		Integer[] itemPair;
+		// Find the most similar item to user's high rated items.
 		for (Rating currentRating: userExistingRatings) {
-			double currentMostSimilar = Double.MIN_VALUE;
-			int currentMostSimilarItem = -1;
-			int itemId = currentRating.getMovieId();
-			int index = Sindex[itemId];
+			if (currentRating.getRating() < threashold) {
+				continue;
+			}
+			
+			currentMostSimilar = Double.MIN_VALUE;
+			currentMostSimilarItem = -1;
+			itemId = currentRating.getMovieId();
+			index = Sindex[itemId];
+			itemPair = new Integer[2];
+			itemPair[0] = itemId;
 			for(int i = 0; i < similarityArray[index].length; i++) {
-				if(similarityArray[index][i] > currentMostSimilar) {
+				if(similarityArray[index][i] > currentMostSimilar &&
+						!isWatched(userID, keyArray[i])) {
 					currentMostSimilar = similarityArray[index][i];
 					currentMostSimilarItem = keyArray[i];
 				}
 			}
-
-			mostSimilar.add(currentMostSimilarItem);
+			itemPair[1] = currentMostSimilarItem;
+			mostSimilar.add(itemPair);
 		}
 
 		// Find top 3 similar Items
@@ -295,32 +307,32 @@ public class FinalProject extends Task {
 		double similar3 = Double.MIN_VALUE;
 		int item1 = -1, item2 = 1, item3 = -1;
 
-		for(int index = 0; index < userExistingRatings.size(); index++) {
+		for(index = 0; index < mostSimilar.size(); index++) {
+			System.out.println(index+" "+mostSimilar.get(index)[0]+" "+mostSimilar.get(index)[1]);
 			// Avoid suggesting the same item
-			if(!isWatched(userID, mostSimilar.get(index)) &&
-					mostSimilar.get(index) != item1 &&
-					mostSimilar.get(index) != item2 &&
-					mostSimilar.get(index) != item3) {
-				int firstItemIdIndex = Sindex[userExistingRatings.get(index).getMovieId()];
-				int secondItemIdIndex = Sindex[mostSimilar.get(index)];
-				 
+			if(mostSimilar.get(index)[1] != item1 &&
+					mostSimilar.get(index)[1] != item2 &&
+					mostSimilar.get(index)[1] != item3) {
+				int firstItemIdIndex = Sindex[mostSimilar.get(index)[0]];
+				int secondItemIdIndex = Sindex[mostSimilar.get(index)[1]];
+				
 				if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar1){
 					similar3 = similar2;
 					item3 = item2;
 					similar2 = similar1;
 					item2 = item1;
 					similar1 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item1 = mostSimilar.get(index);
+					item1 = mostSimilar.get(index)[1];
 				}
 				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar2) {
 					similar3 = similar2;
 					item3 = item2;
 					similar2 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item2 = mostSimilar.get(index);
+					item2 = mostSimilar.get(index)[1];
 				}
 				else if(similarityArray[firstItemIdIndex][secondItemIdIndex] > similar3) {
 					similar3 = similarityArray[firstItemIdIndex][secondItemIdIndex];
-					item3 = mostSimilar.get(index);
+					item3 = mostSimilar.get(index)[1];
 				}
 			}
 		}
@@ -343,6 +355,24 @@ public class FinalProject extends Task {
 				return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * Get the upper-quartile rating of a user.
+	 * @param userId
+	 * @return
+	 */
+	public double userFavorateRate(int userID) {
+		List<Rating> userExistingRatings = userToItemMap.get(userID);
+		int numberOfItem = userExistingRatings.size();
+		double[] rates = new double[numberOfItem];
+		int i = 0;
+		for(Rating rating : userExistingRatings) {
+			rates[i++] = rating.getRating();
+		}
+		Arrays.sort(rates);
+		int nth = (int) Math.round(numberOfItem * 3 / 4);
+		return rates[nth];
 	}
 	
 }
